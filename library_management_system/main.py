@@ -172,7 +172,7 @@ def main():
     app = Main(root)
     root.title("Library Management System")
     root.geometry("1260x650")
-    # root.iconbitmap('icon.ico ')
+    root.iconbitmap('icon.ico ')
     root.mainloop()
 
 
