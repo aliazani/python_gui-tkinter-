@@ -1,10 +1,12 @@
 from tkinter import *
-from tkinter import ttk
-from tkinter import messagebox
+from tkinter import font, colorchooser, ttk, messagebox
 import sqlite3
 
 show_status_bar = True
 show_tool_bar = True
+
+font_name = 'system'
+font_size = 12
 
 
 class TextEditor(Text):
@@ -21,6 +23,89 @@ class TextEditor(Text):
         self.vertical_scroll_bar.config(command=self.yview)
         self.config(xscrollcommand=self.horizontal_scroll_bar.set)
         self.config(yscrollcommand=self.vertical_scroll_bar.set)
+
+
+class StatusBar(Label):
+    def __init__(self, parent, *args, **kwargs):
+        Label.__init__(self, parent, *args, **kwargs)
+        self.parent = parent
+        self.config(text='Status Bar')
+        self.pack(side=BOTTOM)
+
+
+class ToolBar(Label):
+    def __init__(self, parent, *args, **kwargs):
+        Label.__init__(self, parent, *args, **kwargs)
+        self.parent = parent
+        self.pack(side=TOP, fill=X)
+
+        # Combo Boxes
+        self.font_combo_box = ttk.Combobox(self)
+        self.font_size_combo_box = ttk.Combobox(self)
+
+        self.font_combo_box.pack(side=LEFT, padx=(5, 10))
+        self.font_size_combo_box.pack(side=LEFT)
+
+        # Bold
+        self.bold_icon = PhotoImage(file='icons/bold.png')
+        self.bold_btn = Button(self, image=self.bold_icon, command=self.parent.bold_function)
+
+        self.bold_btn.pack(side=LEFT, padx=(10, 5))
+
+        # Italic
+        self.italic_icon = PhotoImage(file='icons/italic.png')
+        self.italic_btn = Button(self, image=self.italic_icon, command=self.parent.italic_function)
+
+        self.italic_btn.pack(side=LEFT, padx=(10, 5))
+
+        # Underline
+        self.underline_icon = PhotoImage(file='icons/under_line.png')
+        self.underline_btn = Button(self, image=self.underline_icon, command=self.parent.underline_function)
+
+        self.underline_btn.pack(side=LEFT, padx=(10, 5))
+
+        # Color
+        self.color_icon = PhotoImage(file='icons/color.png')
+        self.color_btn = Button(self, image=self.color_icon, command=self.parent.change_color_function)
+
+        self.color_btn.pack(side=LEFT, padx=(10, 5))
+
+        # Align Right
+        self.align_right_icon = PhotoImage(file='icons/alignright.png')
+        self.align_right_btn = Button(self, image=self.align_right_icon, command=self.parent.align_right_function)
+
+        self.align_right_btn.pack(side=LEFT, padx=(10, 5))
+
+        # Align Center
+        self.align_center_icon = PhotoImage(file='icons/aligncenter.png')
+        self.align_center_btn = Button(self, image=self.align_center_icon, command=self.parent.align_center_function)
+
+        self.align_center_btn.pack(side=LEFT, padx=(10, 5))
+
+        # Align Left
+        self.align_left_icon = PhotoImage(file='icons/alignleft.png')
+        self.align_left_btn = Button(self, image=self.align_left_icon, command=self.parent.align_left_function)
+
+        self.align_left_btn.pack(side=LEFT, padx=(10, 5))
+
+        # Fonts
+        all_fonts = list(font.families())
+        self.font_variable = StringVar()
+        self.font_combo_box.config(values=all_fonts, textvariable=self.font_variable)
+        self.font_combo_box.current(0)
+
+        # Font Sizes
+        font_sizes_list = []
+        for number in range(1, 101):
+            font_sizes_list.append(number)
+
+        self.font_size_combo_box.config(values=font_sizes_list)
+        self.font_size_combo_box.current(11)
+
+        # Bind methods
+        self.font_combo_box.bind('<<ComboboxSelected>>', self.parent.get_font)
+        self.font_size_combo_box.bind('<<ComboboxSelected>>', self.parent.get_font_size)
+
 
 class MainMenu(Menu):
     def __init__(self, parent, *args, **kwargs):
@@ -93,11 +178,75 @@ class MainApplication(Frame):
         # Widgets
         self.main_menu = MainMenu(self)
 
+        # Tool Bar
+        self.tool_bar = ToolBar(self)
+
+        # Text Editor
         self.text_editor = TextEditor(self)
         self.text_editor.focus()
 
         # Menu configuration
         self.parent.config(menu=self.main_menu)
+
+        # Status Bar
+        self.status_bar = StatusBar(self)
+
+    # Tool bar functions
+    def get_font(self, *args, **kwargs):
+        global font_name
+        font_name = self.tool_bar.font_combo_box.get()
+        self.text_editor.configure(font=(font_name, font_size))
+
+    def get_font_size(self, *args, **kwargs):
+        global font_size
+        font_size = self.tool_bar.font_size_combo_box.get()
+        self.text_editor.configure(font=(font_name, font_size))
+
+    def bold_function(self, *args):
+        text_property = font.Font(font=self.text_editor['font'])
+
+        if text_property.actual('weight') == 'normal':
+            self.text_editor.configure(font=(font_name, font_size, 'bold'))
+        elif text_property.actual('weight') == 'bold':
+            self.text_editor.configure(font=(font_name, font_size, 'normal'))
+
+    def italic_function(self, *args):
+        text_property = font.Font(font=self.text_editor['font'])
+
+        if text_property.actual('slant') == 'roman':
+            self.text_editor.configure(font=(font_name, font_size, 'italic'))
+        elif text_property.actual('slant') == 'italic':
+            self.text_editor.configure(font=(font_name, font_size, 'roman'))
+
+    def underline_function(self, *args):
+        text_property = font.Font(font=self.text_editor['font'])
+
+        if text_property.actual('underline') == 0:
+            self.text_editor.configure(font=(font_name, font_size, 'underline'))
+        elif text_property.actual('underline') == 1:
+            self.text_editor.configure(font=(font_name, font_size, 'normal'))
+
+    def change_color_function(self, *args):
+        color = colorchooser.askcolor()
+        self.text_editor.configure(fg=color[1])
+
+    def align_right_function(self, *args):
+        content = self.text_editor.get(1.0, END)
+        self.text_editor.tag_config('right', justify=RIGHT)
+        self.text_editor.delete(1.0, END)
+        self.text_editor.insert(INSERT, content, 'right')
+
+    def align_center_function(self, *args):
+        content = self.text_editor.get(1.0, END)
+        self.text_editor.tag_config('center', justify=CENTER)
+        self.text_editor.delete(1.0, END)
+        self.text_editor.insert(INSERT, content, 'center')
+
+    def align_left_function(self, *args):
+        content = self.text_editor.get(1.0, END)
+        self.text_editor.tag_config('left', justify=LEFT)
+        self.text_editor.delete(1.0, END)
+        self.text_editor.insert(INSERT, content, 'left')
 
 
 if __name__ == '__main__':
