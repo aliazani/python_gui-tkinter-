@@ -1,5 +1,5 @@
 from tkinter import *
-from tkinter import font, colorchooser, ttk, messagebox
+from tkinter import font, colorchooser, ttk, messagebox, filedialog
 import sqlite3
 
 show_status_bar = True
@@ -7,6 +7,7 @@ show_tool_bar = True
 
 font_name = 'system'
 font_size = 12
+url_var = ''
 
 
 class TextEditor(Text):
@@ -117,11 +118,15 @@ class MainMenu(Menu):
         self.save_icon = PhotoImage(file='icons/save_icon.png')
         self.exit_icon = PhotoImage(file='icons/exit.png')
         self.file = Menu(self, tearoff=0)
-        self.file.add_command(label='New', image=self.new_icon, compound=LEFT, accelerator='Ctrl+N')
-        self.file.add_command(label='Open', image=self.open_icon, compound=LEFT, accelerator='Ctrl+O')
-        self.file.add_command(label='Save', image=self.save_icon, compound=LEFT, accelerator='Ctrl+S')
-        self.file.add_command(label='Save As', image=self.save_icon, compound=LEFT, accelerator='Ctrl+Alt+S')
-        self.file.add_command(label='Exit', image=self.exit_icon, compound=LEFT)
+        self.file.add_command(label='New', image=self.new_icon, compound=LEFT, accelerator='Ctrl+N',
+                              command=self.parent.new_file)
+        self.file.add_command(label='Open', image=self.open_icon, compound=LEFT, accelerator='Ctrl+O',
+                              command=self.parent.open_file)
+        self.file.add_command(label='Save', image=self.save_icon, compound=LEFT, accelerator='Ctrl+S',
+                              command=self.parent.save_file)
+        self.file.add_command(label='Save As', image=self.save_icon, compound=LEFT, accelerator='Ctrl+Alt+S',
+                              command=self.parent.save_as_file)
+        self.file.add_command(label='Exit', image=self.exit_icon, compound=LEFT, command=self.parent.exit_func)
 
         self.add_cascade(label='File', menu=self.file)
 
@@ -247,6 +252,61 @@ class MainApplication(Frame):
         self.text_editor.tag_config('left', justify=LEFT)
         self.text_editor.delete(1.0, END)
         self.text_editor.insert(INSERT, content, 'left')
+
+    def new_file(self, *args):
+        global url_var
+        self.text_editor.delete(1.0, END)
+
+    def open_file(self, *args):
+        global url_var
+
+        url_var = filedialog.askopenfilename(initialdir='./', title='select file',
+                                             filetypes=(('Text Files', '*.txt'), ('All Files', '*.*')))
+        try:
+            with open(url_var, 'r') as read_file:
+                content_of_file = read_file.read()
+                self.text_editor.delete(1.0, END)
+                self.text_editor.insert(INSERT, content_of_file)
+        except:
+            return
+
+        self.parent.title('Editing ' + str(url_var.split('/')[-1]))
+
+    def save_file(self, *args):
+        global url_var
+        try:
+            if url_var != '':
+                content = str(self.text_editor.get(1.0, END))
+                with open(url_var, 'w', encoding='utf-8') as writable_file:
+                    writable_file.write(content)
+
+            else:
+                url_var = filedialog.asksaveasfile(initialdir='./', title='Save file', mode='w',
+                                                   defaultextension='.txt',
+                                                   filetypes=(('Text Files', '*.txt'), ('All Files', '*.*')))
+
+                content_2 = str(self.text_editor.get(1.0, END))
+                url_var.write(content_2)
+                url_var.close()
+        except:
+            return
+
+    def save_as_file(self, *args):
+        global url_var
+        try:
+            url_var = filedialog.asksaveasfile(initialdir='./', title='Save file', mode='w',
+                                               defaultextension='.txt',
+                                               filetypes=(('Text Files', '*.txt'), ('All Files', '*.*')))
+
+            content_2 = str(self.text_editor.get(1.0, END))
+            url_var.write(content_2)
+            url_var.close()
+            self.parent.title('Editing ' + str(url_var.split('/')[-1]))
+        except:
+            return
+
+    def exit_func(self, *args):
+        pass
 
 
 if __name__ == '__main__':
