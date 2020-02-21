@@ -19,7 +19,8 @@ class TextEditor(Text):
         self.vertical_scroll_bar.pack(side=RIGHT, fill=Y)
         self.horizontal_scroll_bar.config(command=self.xview)
         self.vertical_scroll_bar.config(command=self.yview)
-
+        self.config(xscrollcommand=self.horizontal_scroll_bar.set)
+        self.config(yscrollcommand=self.vertical_scroll_bar.set)
 
 class MainMenu(Menu):
     def __init__(self, parent, *args, **kwargs):
