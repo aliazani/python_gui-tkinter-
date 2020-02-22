@@ -11,19 +11,39 @@ url_var = ''
 text_changed = False
 
 
+class FindDialog(Toplevel):
+    def __init__(self, parent, *args, **kwargs):
+        Toplevel.__init__(self, parent, *args, **kwargs)
+        self.parent = parent
+        self.geometry('350x220')
+        self.resizable(False, False)
+        self.title('Find')
+
+        self.label_find = Label(self, text='Find :')
+        self.entry_find = Entry(self, width=35)
+        self.label_replace = Label(self, text='Replace :')
+        self.entry_replace = Entry(self, width=35)
+        self.find_btn = Button(self, text='Find All', command=self.parent.find_words)
+        self.replace_btn = Button(self, text='Replace All', command=self.parent.replace_words)
+
+        self.label_find.place(x=20, y=20)
+        self.entry_find.place(x=80, y=20)
+        self.label_replace.place(x=20, y=80)
+        self.entry_replace.place(x=80, y=80)
+        self.find_btn.place(x=165, y=120)
+        self.replace_btn.place(x=225, y=120)
+        self.entry_find.focus()
+
+
 class TextEditor(Text):
     def __init__(self, parent, *args, **kwargs):
         Text.__init__(self, parent, *args, **kwargs)
         self.parent = parent
         self.config(wrap='word', relief=FLAT)
         self.pack(fill=BOTH, expand=True)
-        self.horizontal_scroll_bar = Scrollbar(self, orient=HORIZONTAL)
-        self.horizontal_scroll_bar.pack(side=BOTTOM, fill=X)
         self.vertical_scroll_bar = Scrollbar(self, orient=VERTICAL)
         self.vertical_scroll_bar.pack(side=RIGHT, fill=Y)
-        self.horizontal_scroll_bar.config(command=self.xview)
         self.vertical_scroll_bar.config(command=self.yview)
-        self.config(xscrollcommand=self.horizontal_scroll_bar.set)
         self.config(yscrollcommand=self.vertical_scroll_bar.set)
 
 
@@ -141,7 +161,7 @@ class MainMenu(Menu):
                               command=lambda: self.parent.text_editor.event_generate('<Control v>'))
         self.edit.add_command(label='Clear All', accelerator='Ctrl+Alt+C',
                               command=lambda: self.parent.text_editor.delete(1.0, END))
-        self.edit.add_command(label='Find', accelerator='Ctrl+F')
+        self.edit.add_command(label='Find', accelerator='Ctrl+F', command=self.parent.find_function)
 
         self.add_cascade(label='Edit', menu=self.edit)
 
@@ -149,8 +169,10 @@ class MainMenu(Menu):
         global show_status_bar
         global show_tool_bar
         self.view = Menu(self, tearoff=0)
-        self.view.add_checkbutton(onvalue=True, offvalue=False, var=show_tool_bar, label='Tool Bar')
-        self.view.add_checkbutton(onvalue=True, offvalue=False, var=show_status_bar, label='Status Bar')
+        self.view.add_checkbutton(onvalue=True, offvalue=False, var=show_tool_bar, label='Tool Bar',
+                                  command=self.parent.tool_bar_function)
+        self.view.add_checkbutton(onvalue=True, offvalue=False, var=show_status_bar, label='Status Bar',
+                                  command=self.parent.status_bar_function)
 
         self.add_cascade(label='View', menu=self.view)
 
@@ -200,7 +222,7 @@ class MainApplication(Frame):
         # Text Editor
         self.text_editor = TextEditor(self)
         self.text_editor.focus()
-
+        self.text_editor.bind('<<Modified>>', self.changed_text_function)
         # Menu configuration
         self.parent.config(menu=self.main_menu)
 
@@ -329,7 +351,7 @@ class MainApplication(Frame):
         try:
             if text_changed is True:
                 message_box = messagebox.askyesnocancel('Warning',
-                                                        f'Do you want to save the changes to {str(url_var.split("/")[-1])}')
+                                                        f'Do you want to save the changes?')
 
                 if message_box is True:
 
@@ -347,6 +369,7 @@ class MainApplication(Frame):
                         content_2 = str(self.text_editor.get(1.0, END))
                         url_var.write(content_2)
                         url_var.close()
+                        self.parent.destroy()
 
                 elif message_box is False:
                     self.parent.destroy()
@@ -362,6 +385,63 @@ class MainApplication(Frame):
 
     def changed_text_function(self, *args):
         global text_changed
+        flag = self.text_editor.edit_modified()
+        text_changed = True
+        if flag:
+            words = len(self.text_editor.get(1.0, 'end-1c').split())
+            letters = len(self.text_editor.get(1.0, 'end-1c'))
+            self.status_bar.config(text="Characters " + str(letters) + "   Words: " + str(words))
+        self.text_editor.edit_modified(False)
+
+    def find_function(self, *args):
+        self.find_dialog = FindDialog(self)
+
+    def find_words(self, *args):
+        matches = 0
+        word = self.find_dialog.entry_find.get()
+
+        self.text_editor.tag_remove('1.0', END)
+        if word:
+            start_position = '1.0'
+            while True:
+                start_position = self.text_editor.search(word, start_position, stopindex=END)
+                if not start_position:
+                    break
+                end_position = f'{start_position}+{len(word)}c'
+                self.text_editor.tag_add('match', start_position, end_position)
+                matches += 1
+                start_position = end_position
+                self.text_editor.tag_config('match', foreground='red', background='yellow')
+
+    def replace_words(self, *args):
+        word = self.find_dialog.entry_find.get()
+        replace_word = self.find_dialog.entry_replace.get()
+        content = self.text_editor.get(1.0, END)
+        new_content = content.replace(word, replace_word)
+        self.text_editor.delete(1.0, END)
+        self.text_editor.insert(1.0, new_content)
+
+    def tool_bar_function(self, *args):
+        global show_tool_bar
+        if show_tool_bar is True:
+            self.tool_bar.pack_forget()
+            show_tool_bar = False
+        else:
+            self.text_editor.pack_forget()
+            self.status_bar.pack_forget()
+            self.tool_bar.pack(side=TOP, fill=X)
+            self.text_editor.pack(fill=BOTH, expand=True)
+            self.status_bar.pack(side=BOTTOM)
+            show_tool_bar = True
+
+    def status_bar_function(self, *args):
+        global show_status_bar
+        if show_status_bar is True:
+            self.status_bar.pack_forget()
+            show_status_bar = False
+        else:
+            self.status_bar.pack()
+            show_status_bar = True
 
 
 if __name__ == '__main__':
