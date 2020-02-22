@@ -8,6 +8,7 @@ show_tool_bar = True
 font_name = 'system'
 font_size = 12
 url_var = ''
+text_changed = False
 
 
 class TextEditor(Text):
@@ -132,10 +133,14 @@ class MainMenu(Menu):
 
         # Edit
         self.edit = Menu(self, tearoff=0)
-        self.edit.add_command(label='Copy', accelerator='Ctrl+C')
-        self.edit.add_command(label='Cut', accelerator='Ctrl+X')
-        self.edit.add_command(label='Paste', accelerator='Ctrl+P')
-        self.edit.add_command(label='Clear All', accelerator='Ctrl+Alt+C')
+        self.edit.add_command(label='Copy', accelerator='Ctrl+C',
+                              command=lambda: self.parent.text_editor.event_generate('<Control c>'))
+        self.edit.add_command(label='Cut', accelerator='Ctrl+X',
+                              command=lambda: self.parent.text_editor.event_generate('<Control x>'))
+        self.edit.add_command(label='Paste', accelerator='Ctrl+P',
+                              command=lambda: self.parent.text_editor.event_generate('<Control v>'))
+        self.edit.add_command(label='Clear All', accelerator='Ctrl+Alt+C',
+                              command=lambda: self.parent.text_editor.delete(1.0, END))
         self.edit.add_command(label='Find', accelerator='Ctrl+F')
 
         self.add_cascade(label='Edit', menu=self.edit)
@@ -163,15 +168,21 @@ class MainMenu(Menu):
             'Dracula': '#ffffff.#000000'
         }
         for color in sorted(self.color_dic):
-            self.templates.add_radiobutton(label=color, var=self.color_choice)
+            self.templates.add_radiobutton(label=color, var=self.color_choice, command=self.change_theme)
         self.add_cascade(label='Templates', menu=self.templates)
 
         # About
 
         self.about = Menu(self, tearoff=0)
-        self.about.add_command()
+        self.about.add_command(label='About Us', command=self.parent.about_function)
 
         self.add_cascade(label='About', menu=self.about)
+
+    def change_theme(self, *args):
+        selected_theme = self.color_choice.get()
+        fg_and_bg_color = self.color_dic.get(selected_theme)
+        foreground_color, background_color = fg_and_bg_color.split('.')
+        self.parent.text_editor.config(bg=background_color, fg=foreground_color)
 
 
 class MainApplication(Frame):
@@ -195,6 +206,10 @@ class MainApplication(Frame):
 
         # Status Bar
         self.status_bar = StatusBar(self)
+
+    # About Us
+    def about_function(self, *args):
+        messagebox.showinfo("About", "If you have any question contact me by:\naliazn2013@gmail.com")
 
     # Tool bar functions
     def get_font(self, *args, **kwargs):
@@ -255,7 +270,9 @@ class MainApplication(Frame):
 
     def new_file(self, *args):
         global url_var
+        url_var = ''
         self.text_editor.delete(1.0, END)
+        self.parent.title('Text Editor')
 
     def open_file(self, *args):
         global url_var
@@ -306,7 +323,45 @@ class MainApplication(Frame):
             return
 
     def exit_func(self, *args):
-        pass
+        global url_var
+        global text_changed
+
+        try:
+            if text_changed is True:
+                message_box = messagebox.askyesnocancel('Warning',
+                                                        f'Do you want to save the changes to {str(url_var.split("/")[-1])}')
+
+                if message_box is True:
+
+                    if url_var != '':
+                        content = self.text_editor.get(1.0, END)
+                        with open(url_var, 'w', encoding='utf-8') as writable_file:
+                            writable_file.write(content)
+                        self.parent.destroy()
+
+                    elif url_var == '':
+                        url_var = filedialog.asksaveasfile(initialdir='./', title='Save file', mode='w',
+                                                           defaultextension='.txt',
+                                                           filetypes=(('Text Files', '*.txt'), ('All Files', '*.*')))
+
+                        content_2 = str(self.text_editor.get(1.0, END))
+                        url_var.write(content_2)
+                        url_var.close()
+
+                elif message_box is False:
+                    self.parent.destroy()
+
+                elif message_box is None:
+                    return
+
+            elif text_changed is False:
+                self.parent.destroy()
+
+        except:
+            return
+
+    def changed_text_function(self, *args):
+        global text_changed
 
 
 if __name__ == '__main__':
